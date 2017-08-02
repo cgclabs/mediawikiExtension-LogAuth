@@ -40,7 +40,7 @@ function logAuth($response, $user, $username)
         error_log("$time Successful login by $username from $ip on $fail2banid\n", 3, $fail2banfile);
         return true; //continue to next hook
     } else {
-        error_log("$time Authentication error from $ip on $fail2banid\n", 3, $fail2banfile);
+        error_log("$time Authentication error by $username from $ip on $fail2banid\n", 3, $fail2banfile);
         return true; //continue to next hook
     }
 }

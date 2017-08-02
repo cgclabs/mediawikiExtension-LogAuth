@@ -27,7 +27,7 @@ $wgHooks['AuthManagerLoginAuthenticateAudit'][] = 'logAuth';
 //branch based on what happens with the auth attempt
 function logAuth($response, $user, $username)
 {
-    // grab the WikiMedia global vars
+    // grab the MediaWiki global vars
     global $fail2banfile;
     global $fail2banid;
 
@@ -39,10 +39,7 @@ function logAuth($response, $user, $username)
     if ($response->status == "PASS") {
         error_log("$time Successful login by $username from $ip on $fail2banid\n", 3, $fail2banfile);
         return true; //continue to next hook
-    }
-    
-    //unsuccessful login
-    else {
+    } else {
         error_log("$time Authentication error from $ip on $fail2banid\n", 3, $fail2banfile);
         return true; //continue to next hook
     }

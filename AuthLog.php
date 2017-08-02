@@ -20,57 +20,26 @@ $wgExtensionCredits['other'][] = array(
     'url'         => '',
     'version'     => AUTH_VERSION
 );
-$wgExtensionMessagesFiles['AuthLog'] = dirname(__FILE__) . '/' . 'AuthLog.i18n.php';
-// Add a new log type
-$wgLogTypes[]                      = 'authlog';
-$wgLogNames  ['authlog']           = 'authlogpage';
-$wgLogHeaders['authlog']           = 'authlogpagetext';
-$wgLogActions['authlog/success']   = 'authlog-success';
-$wgLogActions['authlog/error']     = 'authlog-error';
-$wgLogActions['authlog/logout']    = 'userlogin-logout';
 
 // Add hooks to the login/logout events
-$wgHooks['UserLoginForm'][]      = 'wfUserLoginLogError';
-$wgHooks['UserLoginComplete'][]  = 'wfUserLoginLogSuccess';
-$wgHooks['UserLogout'][]         = 'wfUserLoginLogout';
-$wgHooks['UserLogoutComplete'][] = 'wfUserLoginLogoutComplete';
+$wgHooks['AuthManagerLoginAuthenticateAudit'][] = 'logAuth';
 
-function wfUserLoginLogSuccess(&$user)
+//branch based on what happens with the auth attempt
+function logAuth($response, $user, $username)
 {
-    $log = new LogPage('userlogin', false);
-    $log->addEntry('success', $user->getUserPage(), wfGetIP());
-    return true;
-}
-function wfUserLoginLogError(&$tmpl)
-{
-    global $wgUser, $wgServerUser;
-    if ($tmpl->data['message'] && $tmpl->data['messagetype'] == 'error') {
-        $log = new LogPage('userlogin', false);
-        $tmp = $wgUser->mId;
-        if ($tmp == 0) {
-            $wgUser->mId = $wgServerUser;
-        }
-        $log->addEntry('error', $wgUser->getUserPage(), $tmpl->data['message'], array( wfGetIP()));
-        $wgUser->mId = $tmp;
+    //set vars to log
+    $time = date("Y-m-d H:i:s T");
+    $ip = $_SERVER['REMOTE_ADDR'];
+
+    //successful login
+    if ($response->status == "PASS") {
+        error_log("$time Successful login by $username from $ip");
+        return true; //continue to next hook
     }
-    return true;
-}
-/**
- * Create a copy of the current user for logging after logout
- */
-function wfUserLoginLogout($user)
-{
-    global $wgUserBeforeLogout;
-    $wgUserBeforeLogout = User::newFromId($user->getID());
-    return true;
-}
-function wfUserLoginLogoutComplete($user)
-{
-    global $wgUser, $wgUserBeforeLogout;
-    $tmp = $wgUser->mId;
-    $wgUser->mId = $wgUserBeforeLogout->getId();
-    $log = new LogPage('userlogin', false);
-    $log->addEntry('logout', $wgUserBeforeLogout->getUserPage(), $user->getName());
-    $wgUser->mId = $tmp;
-    return true;
+    
+    //unsuccessful login
+    else {
+        error_log("$time Authentication error from $ip on $fail2banid\n", 3, $fail2banfile);
+        return true; //continue to next hook
+    }
 }

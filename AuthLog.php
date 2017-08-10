@@ -1,4 +1,9 @@
 <?php
+
+use MediaWiki\Auth\AuthManager;
+use MediaWiki\Auth\AuthenticationResponse;
+use MediaWiki\Auth\AbstractPreAuthenticationProvider;
+
 /**
  * AuthLog - MediaWiki extension to add auth events to the log
  *
@@ -8,6 +13,7 @@
  * @copyright © 2017 Container Graphics Corporation
  * @licence MIT
  */
+
 if (!defined('MEDIAWIKI')) {
     die('Not an entry point.');
 }
@@ -24,23 +30,45 @@ $wgExtensionCredits['other'][] = array(
 // Add hooks to the login/logout events
 $wgHooks['AuthManagerLoginAuthenticateAudit'][] = 'logAuth';
 
-//branch based on what happens with the auth attempt
-function logAuth($response, $user, $username)
+function logAuth($response, $user, $username, $time, $ip)
 {
     // grab the MediaWiki global vars
     global $fail2banfile;
     global $fail2banid;
 
-    //set vars to log
+    // set vars for logfile
     $time = date("Y-m-d H:i:s T");
     $ip = $_SERVER['REMOTE_ADDR'];
 
-    //successful login
-    if ($response->status == "PASS") {
+    if ($response->status === AuthenticationResponse::PASS) {
         error_log("$time Successful login by $username from $ip on $fail2banid\n", 3, $fail2banfile);
         return true; //continue to next hook
-    } else {
+    } elseif ($response->status === AuthenticationResponse::FAIL) {
         error_log("$time Authentication error by $username from $ip on $fail2banid\n", 3, $fail2banfile);
         return true; //continue to next hook
     }
 }
+
+class LoggingAuthenticationProvider extends AbstractPreAuthenticationProvider
+{
+    public function postAuthentication($user, AuthenticationResponse $response)
+    {
+        global $fail2banfile;
+        global $fail2banid;
+        
+        // set vars for logfile
+        $time = date("Y-m-d H:i:s T");
+        $ip = $_SERVER['REMOTE_ADDR'];
+
+        // if the username is not found in the database, log the attempt
+        if ($response->username === null) {
+            error_log("$time Authentication error by $user from $ip on $fail2banid\n", 3, $fail2banfile);
+        };
+    }
+}
+
+$wgAuthManagerAutoConfig['preauth'] = [
+    'LoggingAuthenticationProvider' => [
+        'class' => 'LoggingAuthenticationProvider',
+    ],
+];

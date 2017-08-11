@@ -63,7 +63,10 @@ class LoggingAuthenticationProvider extends AbstractPreAuthenticationProvider
         // if the username is not found in the database, log the attempt
         if ($response->username === null) {
             error_log("$time Authentication error by $user from $ip on $fail2banid\n", 3, $fail2banfile);
-        };
+            return true;
+        } else {
+            return true;
+        }
     }
 }
 
